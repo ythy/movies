@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:movies/widgets/form_card.dart';
-import 'package:movies/widgets/top_bar.dart';
-import 'package:movies/widgets/main_portal.dart';
+import 'package:movies/views/cards/form_card.dart';
+import 'package:movies/views/top_bar.dart';
+import 'package:movies/views/main_portal.dart';
 import 'package:movies/models/model_user.dart';
 import 'package:provider/provider.dart';
 import 'package:movies/models/login_data.dart';
+import 'package:movies/widgets/radio_button.dart';
+import 'package:movies/widgets/animate_button.dart';
 
 const users =  {
   'maoxin': '12345',
@@ -21,15 +23,63 @@ class Login extends StatefulWidget {
 }
 
 
-class _LoginState extends State<Login> {
+class _LoginState extends State<Login> with TickerProviderStateMixin{
 
-  bool _isSelected = false;
+  bool _isRememberSelected = false;
+  var _isLoading = false;
+  var _isSubmitting = false;
+  var _showShadow = true;
 
-  Duration get loginTime => const Duration(milliseconds: 2250);
+  late AnimationController _submitController;
+  late Animation<double> _buttonScaleAnimation;
+  late AnimationController _loadingController;
 
-  Future<String?> _authUser(LoginData data) {
+  Duration get loginTime => const Duration(milliseconds: 1000);
+
+  @override
+  void initState() {
+    super.initState();
+    _submitController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+
+    _loadingController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+    _buttonScaleAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(
+        parent: _loadingController,
+        curve: const Interval(.5, 1, curve: Curves.bounceInOut),
+      ),
+    );
+
+  }
+
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadingController.forward();
+  }
+
+
+  @override
+  void dispose() {
+    _submitController.dispose();
+    super.dispose();
+  }
+
+
+  Future<String?> _authUser(LoginData data) async{
+
+    await _submitController.forward();
+    setState(() => _isSubmitting = true);
+
     debugPrint('Name: ${data.name}, Password: ${data.password}');
+
     return Future.delayed(loginTime).then((_) {
+      _submitController.reverse();
+      setState(() => _isSubmitting = false);
       if (!users.containsKey(data.name)) {
         return 'User not exists';
       }
@@ -41,85 +91,36 @@ class _LoginState extends State<Login> {
   }
 
 
-  void _radio() {
+  void _onRememberRadioTap() {
     setState(() {
-      _isSelected = !_isSelected;
+      _isRememberSelected = !_isRememberSelected;
     });
   }
 
-  Widget radioButton(bool isSelected) => Container(
-    width: 16.0,
-    height: 16.0,
-    padding: EdgeInsets.all(2.0),
-    decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(width: 2.0, color: Theme.of(context).colorScheme.primary)),
-    child: isSelected
-        ? Container(
-      width: double.infinity,
-      height: double.infinity,
-      decoration:
-      BoxDecoration(shape: BoxShape.circle, color: Theme.of(context).colorScheme.primary),
-    )
-        : Container(),
-  );
-
-  Widget signButton() => InkWell(
-    child: Container(
-      width: ScreenUtil().setWidth(230),
-      height: ScreenUtil().setHeight(80),
-      decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [
-            Theme.of(context).colorScheme.primary,
-            Theme.of(context).colorScheme.secondary
-          ]),
-          borderRadius: BorderRadius.circular(6.0),
-          boxShadow: [
-            BoxShadow(
-                color:
-                Theme.of(context).colorScheme.primary.withOpacity(.3),
-                offset: Offset(0.0, 8.0),
-                blurRadius: 8.0)
-          ]),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            var result = _authUser(LoginData(name: Provider.of<UserModel>(context, listen: false).userName,
-                password: Provider.of<UserModel>(context, listen: false).userPassword));
-            result.then((value)=>{
-                if(value == null){
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute<void>(
-                        builder: (BuildContext context) {
-                          return Mainframe() ;
-                        },
-                      ),
-                          (route) => false,
-                    )
-                  }else{
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text(value, style: TextStyle(color:
-                        Theme.of(context).colorScheme.onError)),
-                        backgroundColor: Theme.of(context).colorScheme.error,
-                        behavior: SnackBarBehavior.floating),)
-                  }
-            });
-          },
-          child: Center(
-            child: Text("SIGNIN",
-                style: TextStyle(
-                    color: Theme.of(context).colorScheme.onPrimary,
-                    fontFamily: "Poppins-Bold",
-                    fontSize: 18,
-                    letterSpacing: 1.0)),
+  void _onLoginTap() {
+    var result = _authUser(LoginData(name: Provider.of<UserModel>(context, listen: false).userName,
+        password: Provider.of<UserModel>(context, listen: false).userPassword));
+    result.then((value)=>{
+      if(value == null){
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute<void>(
+            builder: (BuildContext context) {
+              return Mainframe() ;
+            },
           ),
-        ),
-      ),
-    ),
-  );
+              (route) => false,
+        )
+      }else{
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(value, style: TextStyle(color:
+        Theme.of(context).colorScheme.onError)),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating),)
+      }
+    });
+  }
 
   Widget horizontalLine() => Padding(
     padding: EdgeInsets.symmetric(horizontal: 16.0),
@@ -178,25 +179,18 @@ class _LoginState extends State<Login> {
                     Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: <Widget>[
-                          InkWell(
-                            onTap: _radio,
-                            child: Row(
-                              children: <Widget>[
-                                SizedBox(
-                                  width: 12.0,
-                                ),
-                                radioButton(_isSelected),
-                                SizedBox(
-                                  width: 8.0,
-                                ),
-                                Text("Remember me",
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        fontFamily: "Poppins-Medium"))
-                              ],
+                          RadioButton(isSelected: _isRememberSelected, onTap: _onRememberRadioTap),
+                          SizedBox(
+                            width: 150,
+                            child: ScaleTransition(
+                              scale: _buttonScaleAnimation,
+                              child: AnimatedButton(
+                                  text: "LOGIN", onPressed: _onLoginTap, controller: _submitController
+                              ),
                             ),
-                          ),
-                          signButton()
+                          )
+
+                         // Ring(color: Theme.of(context).colorScheme.primary, value: 1,)
                         ]),
                     SizedBox(
                       height: ScreenUtil().setHeight(40),

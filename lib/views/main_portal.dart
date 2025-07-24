@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:movies/models/model_theme.dart';
-import 'package:movies/widgets/top_bar.dart';
-import 'package:movies/widgets/nav_home.dart';
+import 'package:movies/views/top_bar.dart';
+import 'package:movies/views/navs/nav_home.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
 class Mainframe extends StatefulWidget {

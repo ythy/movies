@@ -4,7 +4,7 @@ import 'package:movies/models/model_user.dart';
 import 'models/model_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:movies/widgets/main_login.dart';
+import 'package:movies/views/main_login.dart';
 
 
 void main() => runApp(MaterialApp(

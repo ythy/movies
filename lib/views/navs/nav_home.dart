@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'form_card.dart';
+import '../cards/form_card.dart';
 
 
 
