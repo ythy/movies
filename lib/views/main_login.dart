@@ -1,6 +1,9 @@
+import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:movies/views/cards/form_card.dart';
+import 'package:movies/views/cards/form_combobox_card.dart';
 import 'package:movies/views/top_bar.dart';
 import 'package:movies/views/main_portal.dart';
 import 'package:movies/models/model_user.dart';
@@ -8,12 +11,10 @@ import 'package:provider/provider.dart';
 import 'package:movies/models/login_data.dart';
 import 'package:movies/widgets/radio_button.dart';
 import 'package:movies/widgets/animate_button.dart';
-
-const users =  {
-  'maoxin': '12345',
-  'imc': 'hunter',
-};
-
+import 'package:http/http.dart' as http;
+import 'package:movies/models/user_data.dart';
+import 'package:movies/models/respond_data.dart';
+import 'package:crypto/crypto.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -29,10 +30,12 @@ class _LoginState extends State<Login> with TickerProviderStateMixin{
   var _isLoading = false;
   var _isSubmitting = false;
   var _showShadow = true;
+  List<UserData> _userList = [];
 
   late AnimationController _submitController;
   late Animation<double> _buttonScaleAnimation;
   late AnimationController _loadingController;
+
 
   Duration get loginTime => const Duration(milliseconds: 1000);
 
@@ -55,6 +58,13 @@ class _LoginState extends State<Login> with TickerProviderStateMixin{
       ),
     );
 
+   _fetchUserList().then((onValue){
+     setState(() {
+       _userList = onValue;
+     });
+
+   });
+
   }
 
   void didChangeDependencies() {
@@ -69,25 +79,51 @@ class _LoginState extends State<Login> with TickerProviderStateMixin{
     super.dispose();
   }
 
+  Future<List<UserData>> _fetchUserList() async {
+    final response = await http.get(
+      Uri.parse('http://109.14.6.43:6636/ux/getUserList?jsonString=%7B%22blockflag%22%3A%22N%22%2C%22usertype%22%3A%22U%22%2C%22iPageCount%22%3A20%2C%22iStart%22%3A0%7D'),
+    );
+    if (response.statusCode == 200) {
+      // If the server did return a 200 OK response,
+      // then parse thON.
+      var data = RespondData.fromJson(jsonDecode(response.body)).data;
+      List<UserData> result = [];
+      for (var user in data) {
+        result.add(UserData.fromJson(user));
+      }
+      return result; UserData.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    } else {
+      // If the server did not return a 200 OK response,
+      // then throw an exception.
+      throw Exception('Failed to load remote uri');
+    }
+  }
 
-  Future<String?> _authUser(LoginData data) async{
-
+  Future<String?> _authUser(String id, String password) async{
     await _submitController.forward();
     setState(() => _isSubmitting = true);
 
-    debugPrint('Name: ${data.name}, Password: ${data.password}');
+    var bytes = utf8.encode(password); // data being hashed
 
-    return Future.delayed(loginTime).then((_) {
-      _submitController.reverse();
-      setState(() => _isSubmitting = false);
-      if (!users.containsKey(data.name)) {
-        return 'User not exists';
-      }
-      if (users[data.name] != data.password) {
-        return 'Password does not match';
-      }
-      return null;
-    });
+    UserData request = UserData(id: id, name: "", blockflag: "N", password: md5.convert(bytes).toString().toUpperCase());
+    print(jsonEncode(request));
+    final response = await http.get(
+      Uri.parse('http://109.14.6.43:6636/ux/verifyUser?jsonString=${jsonEncode(request)}'),
+    );
+    await _submitController.reverse();
+
+    if (response.statusCode == 200) {
+      // If the server did return a 200 OK response,
+      // then parse thON.
+      print(jsonDecode(response.body));
+      var respond = RespondData.fromJson(jsonDecode(response.body));
+
+      return respond.msg; UserData.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    } else {
+      // If the server did not return a 200 OK response,
+      // then throw an exception.
+      throw Exception('Failed to load remote uri');
+    }
   }
 
 
@@ -98,8 +134,8 @@ class _LoginState extends State<Login> with TickerProviderStateMixin{
   }
 
   void _onLoginTap() {
-    var result = _authUser(LoginData(name: Provider.of<UserModel>(context, listen: false).userName,
-        password: Provider.of<UserModel>(context, listen: false).userPassword));
+    var result = _authUser(Provider.of<UserModel>(context, listen: false).id,
+       Provider.of<UserModel>(context, listen: false).password);
     result.then((value)=>{
       if(value == null){
         Navigator.pushAndRemoveUntil(
@@ -174,7 +210,8 @@ class _LoginState extends State<Login> with TickerProviderStateMixin{
                     SizedBox(
                       height: ScreenUtil().setHeight(180),
                     ),
-                    FormCard(),
+                    //FormCard(),
+                    FormComboboxCard(userList: _userList),
                     SizedBox(height: ScreenUtil().setHeight(40)),
                     Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,

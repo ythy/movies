@@ -30,7 +30,7 @@ class _FormCardState extends State<FormCard> {
   void didChangeDependencies() {
     // TODO: implement didChangeDependencies
     super.didChangeDependencies();
-    userNameController.text = Provider.of<UserModel>(context).userName;
+    userNameController.text = Provider.of<UserModel>(context).id;
   }
 
 
@@ -45,12 +45,12 @@ class _FormCardState extends State<FormCard> {
 
   void _LatestUserNameValue() {
     final text = userNameController.text;
-    Provider.of<UserModel>(context, listen: false).userName = text;
+    Provider.of<UserModel>(context, listen: false).id = text;
   }
 
   void _LatestUserPasswordValue() {
     final text = userPasswordController.text;
-    Provider.of<UserModel>(context, listen: false).userPassword = text;
+    Provider.of<UserModel>(context, listen: false).password = text;
   }
 
 
