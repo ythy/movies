@@ -4,14 +4,16 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:movies/models/model_user.dart';
 import 'package:provider/provider.dart';
 import 'package:movies/models/user_data.dart';
+import 'package:movies/widgets/initial_animated_builder.dart';
 
 typedef UserListEntry = DropdownMenuEntry<UserData>;
 
 class FormComboboxCard extends StatefulWidget {
 
   final List<UserData> userList;
+  final AnimationController controller;
 
-  FormComboboxCard({super.key, required this.userList});
+  FormComboboxCard({super.key, required this.userList, required this.controller});
 
   @override
   State<FormComboboxCard> createState() => _FormComboboxCardState();
@@ -112,39 +114,49 @@ class _FormComboboxCardState extends State<FormComboboxCard> {
             SizedBox(
               height: 30.h, // ✅ correct
             ),
-            DropdownMenu<UserData>(
-              controller: userController,
-              requestFocusOnTap: true,
-              label: const Text('User'),
-              onSelected: (UserData? user) {
-                setState(() {
-                  selectedUser = user;
-                  Provider.of<UserModel>(context, listen: false).id = user?.id ?? "";
-                });
-              },
-              dropdownMenuEntries: userEntries,
-              leadingIcon:Icon(Icons.person),
+            InitialAnimatedBuilder(
+              controller: widget.controller,
+              interval: Interval(0.2, 0.8),
               width: 700.w,
+              child: DropdownMenu<UserData>(
+                  controller: userController,
+                  requestFocusOnTap: true,
+                  label: const Text('User'),
+                  onSelected: (UserData? user) {
+                    setState(() {
+                      selectedUser = user;
+                      Provider.of<UserModel>(context, listen: false).id = user?.id ?? "";
+                    });
+                  },
+                  dropdownMenuEntries: userEntries,
+                  leadingIcon:Icon(Icons.person),
+                  width: 700.w,
+                ),
             ),
             SizedBox(
               height: ScreenUtil().setHeight(30),
             ),
-            TextField(
-              obscureText: isObscure,
-              controller: userPasswordController,
-              decoration: InputDecoration(
-                  icon: Icon(Icons.lock),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      isObscure ? Icons.visibility : Icons.visibility_off,
+            InitialAnimatedBuilder(
+              controller: widget.controller,
+              interval: Interval(0.4, 1),
+              width: 700.w,
+              child: TextField(
+                obscureText: isObscure,
+                controller: userPasswordController,
+                decoration: InputDecoration(
+                    icon: Icon(Icons.lock),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        isObscure ? Icons.visibility : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          isObscure = !isObscure;
+                        });
+                      },
                     ),
-                    onPressed: () {
-                      setState(() {
-                        isObscure = !isObscure;
-                      });
-                    },
-                  ),
-              label: const Text("Password")),
+                    label: const Text("Password", overflow: TextOverflow.ellipsis,)),
+              ),
             ),
             SizedBox(
               height: ScreenUtil().setHeight(80),

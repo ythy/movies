@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:movies/views/cards/form_card.dart';
@@ -8,13 +9,15 @@ import 'package:movies/views/top_bar.dart';
 import 'package:movies/views/main_portal.dart';
 import 'package:movies/models/model_user.dart';
 import 'package:provider/provider.dart';
-import 'package:movies/models/login_data.dart';
 import 'package:movies/widgets/radio_button.dart';
-import 'package:movies/widgets/animate_button.dart';
+import 'package:movies/widgets/animate_loading_button.dart';
 import 'package:http/http.dart' as http;
 import 'package:movies/models/user_data.dart';
 import 'package:movies/models/respond_data.dart';
 import 'package:crypto/crypto.dart';
+import 'package:movies/widgets/initial_animated_builder.dart';
+import 'package:movies/widgets/custom_page_transformer.dart';
+import 'package:another_transformer_page_view/another_transformer_page_view.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -27,15 +30,13 @@ class Login extends StatefulWidget {
 class _LoginState extends State<Login> with TickerProviderStateMixin{
 
   bool _isRememberSelected = false;
-  var _isLoading = false;
-  var _isSubmitting = false;
-  var _showShadow = true;
+  int _cardIndex = 0;
   List<UserData> _userList = [];
 
   late AnimationController _submitController;
-  late Animation<double> _buttonScaleAnimation;
-  late AnimationController _loadingController;
+  late AnimationController _initialController;
 
+  late IndexController _cardController;
 
   Duration get loginTime => const Duration(milliseconds: 1000);
 
@@ -46,17 +47,13 @@ class _LoginState extends State<Login> with TickerProviderStateMixin{
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     );
-
-    _loadingController = AnimationController(
+    _initialController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
+
     );
-    _buttonScaleAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(
-        parent: _loadingController,
-        curve: const Interval(.5, 1, curve: Curves.bounceInOut),
-      ),
-    );
+    _cardController = IndexController();
+
 
    _fetchUserList().then((onValue){
      setState(() {
@@ -69,13 +66,17 @@ class _LoginState extends State<Login> with TickerProviderStateMixin{
 
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _loadingController.forward();
+    Future.delayed(Duration(milliseconds: 1000)).then((_){
+      _initialController.forward();
+    });
   }
 
 
   @override
   void dispose() {
     _submitController.dispose();
+    _cardController.dispose();
+    _initialController.dispose();
     super.dispose();
   }
 
@@ -101,8 +102,6 @@ class _LoginState extends State<Login> with TickerProviderStateMixin{
 
   Future<String?> _authUser(String id, String password) async{
     await _submitController.forward();
-    setState(() => _isSubmitting = true);
-
     var bytes = utf8.encode(password); // data being hashed
 
     UserData request = UserData(id: id, name: "", blockflag: "N", password: md5.convert(bytes).toString().toUpperCase());
@@ -126,6 +125,17 @@ class _LoginState extends State<Login> with TickerProviderStateMixin{
     }
   }
 
+  // void _changeCard(int newCardIndex) {
+  //
+  //   setState(() {
+  //     _pageController.animateToPage(
+  //       newCardIndex,
+  //       duration: const Duration(milliseconds: 500),
+  //       curve: Curves.ease,
+  //     );
+  //     _cardIndex = newCardIndex;
+  //   });
+  // }
 
   void _onRememberRadioTap() {
     setState(() {
@@ -167,6 +177,39 @@ class _LoginState extends State<Login> with TickerProviderStateMixin{
     ),
   );
 
+
+
+  Widget _changeToCard(BuildContext context) {
+    return SizedBox(
+        height: 270.0,
+        child:  new TransformerPageView(
+          loop: false,
+          duration: Duration(milliseconds: 1000),
+          index: _cardIndex,
+          viewportFraction: 1.0,
+          controller: _cardController,
+          transformer: new ScaleAndFadeTransformer(),//CustomPageTransformer(),
+          onPageChanged: (int? index) {
+            setState(() {
+              _cardIndex = index!;
+            });
+          },
+          itemBuilder: (BuildContext context, int index) {
+             switch (index) {
+                case 0:
+                  return InitialAnimatedBuilder(
+                    controller: _initialController,
+                    interval: Interval(0, 1),
+                    type: 1,
+                    child: FormComboboxCard(userList: _userList, controller: _initialController));
+                case 1:
+                  return FormCard();
+               default:
+                 return  FormCard();
+            }
+          }, itemCount: 2)
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -210,8 +253,7 @@ class _LoginState extends State<Login> with TickerProviderStateMixin{
                     SizedBox(
                       height: ScreenUtil().setHeight(180),
                     ),
-                    //FormCard(),
-                    FormComboboxCard(userList: _userList),
+                    _changeToCard(context),
                     SizedBox(height: ScreenUtil().setHeight(40)),
                     Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -219,9 +261,9 @@ class _LoginState extends State<Login> with TickerProviderStateMixin{
                           RadioButton(isSelected: _isRememberSelected, onTap: _onRememberRadioTap),
                           SizedBox(
                             width: 150,
-                            child: ScaleTransition(
-                              scale: _buttonScaleAnimation,
-                              child: AnimatedButton(
+                            child: InitialAnimatedBuilder(
+                              controller: _initialController,
+                              child: AnimatedLoadingButton(
                                   text: "LOGIN", onPressed: _onLoginTap, controller: _submitController
                               ),
                             ),
@@ -249,12 +291,29 @@ class _LoginState extends State<Login> with TickerProviderStateMixin{
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: <Widget>[
-                        Text(
-                          "New User? ",
-                          style: TextStyle(fontFamily: "Poppins-Medium"),
+                        InkWell(
+                          onTap: () {
+                            if(_initialController.status == AnimationStatus.dismissed)
+                              _initialController.forward();
+                            else
+                              _initialController.reverse();
+                          },
+
+                          child: Text("switch",
+                              style: TextStyle(
+                                  fontFamily: "Poppins-Bold")),
+                        ),
+                        SizedBox(
+                          width: ScreenUtil().setHeight(40),
                         ),
                         InkWell(
-                          onTap: () {},
+                          onTap: () {
+                            var a = Random().nextBool();
+                            if(a)
+                              _cardController.next();
+                            else
+                              _cardController.previous();
+                          },
                           child: Text("SignUp",
                               style: TextStyle(
                                   fontFamily: "Poppins-Bold")),

@@ -4,12 +4,13 @@ import 'package:movies/widgets/ring.dart';
 
 typedef AnimateButtonTapCallback = void Function();
 
-class AnimatedButton extends StatefulWidget {
+class AnimatedLoadingButton extends StatefulWidget {
 
-  AnimatedButton({
+  AnimatedLoadingButton({
     required this.text,
     required this.onPressed,
     required this.controller,
+    this.loadingController,
     super.key,
     this.loadingColor,
     this.color,
@@ -33,11 +34,13 @@ class AnimatedButton extends StatefulWidget {
   /// loading progress or success.
   final AnimationController? controller;
 
+  final AnimationController? loadingController;
+
   @override
-  State<AnimatedButton> createState() => _AnimatedButtonState();
+  State<AnimatedLoadingButton> createState() => _AnimatedButtonState();
 }
 
-class _AnimatedButtonState extends State<AnimatedButton>
+class _AnimatedButtonState extends State<AnimatedLoadingButton>
     with SingleTickerProviderStateMixin {
 
   late Animation<double> _sizeAnimation;
@@ -117,7 +120,7 @@ class _AnimatedButtonState extends State<AnimatedButton>
   }
 
   @override
-  void didUpdateWidget(AnimatedButton oldWidget) {
+  void didUpdateWidget(AnimatedLoadingButton oldWidget) {
     super.didUpdateWidget(oldWidget);
 
     if (oldWidget.color != widget.color ||
